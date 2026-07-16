@@ -12,7 +12,8 @@
     "test:notif": "electron test/notificacoes.js",
     "icons": "node tools/make-icons.js",
     "pack": "npm run icons && electron-builder --win --dir",
-    "dist": "npm run icons && electron-builder --win"
+    "dist": "npm run icons && electron-builder --win",
+    "publish": "npm run icons && electron-builder --win --publish always"
   },
   "dependencies": {
     "electron-updater": "^6.8.9",
