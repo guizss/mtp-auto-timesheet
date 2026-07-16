@@ -45,6 +45,9 @@
         "repo": "mtp-auto-timesheet"
       }
     ],
+    "releaseInfo": {
+      "releaseNotesFile": "RELEASE_NOTES.md"
+    },
     "win": {
       "target": [
         {
