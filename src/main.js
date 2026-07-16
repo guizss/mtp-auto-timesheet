@@ -7,7 +7,7 @@ const fs = require('fs');
 const { log, setLogFile } = require('./core/logger');
 const { DutyDetector, wireDetector, NUI_URL } = require('./core/detector');
 const { DiscordClient } = require('./discord');
-const { configureNotifier, attachNotifications } = require('./notifier');
+const { configureNotifier, attachNotifications, reportNotificationHealth, toastsAllowedByWindows } = require('./notifier');
 const { setupUpdater, updateReady, installNow, checkNow } = require('./updater');
 
 const ASSETS = path.join(__dirname, '..', 'assets');
@@ -105,12 +105,17 @@ function updateTray() {
       enabled: loggedIn,
       click: (item) => togglePause(item.checked),
     },
-    {
+    // Se o Windows bloqueia toasts, a checkbox do app é inócua — dizer isso
+    // aqui evita o usuário achar que o programa está quebrado.
+    ...(toastsAllowedByWindows() ? [{
       label: 'Notificações',
       type: 'checkbox',
       checked: notificationsEnabled(),
       click: (item) => { writeConfig({ notifications: item.checked }); updateTray(); },
-    },
+    }] : [{
+      label: 'Notificações desligadas no Windows — clique para ajustar',
+      click: () => shell.openExternal('ms-settings:notifications'),
+    }]),
     {
       label: 'Iniciar com o Windows',
       type: 'checkbox',
@@ -189,6 +194,7 @@ app.whenReady().then(async () => {
   updateTray();
 
   configureNotifier(notificationsEnabled);
+  reportNotificationHealth();
   discord = new DiscordClient();
 
   // beforeInstall: o updater reinicia o app, então o ponto precisa fechar antes.
