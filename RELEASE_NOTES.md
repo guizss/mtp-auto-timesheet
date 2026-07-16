@@ -23,23 +23,34 @@ Clique em **Mais informações** → **Executar assim mesmo**.
 
 ### Usando
 
-Não precisa fazer nada. Entrou em serviço no jogo, o ponto abre. Saiu, o ponto fecha.
-Fechou o FiveM, o ponto fecha. O Windows te avisa toda vez.
+**Não precisa fazer nada.** Abra o FiveM e jogue. Entrou em serviço, o ponto abre. Saiu,
+o ponto fecha. Fechou o jogo, o ponto fecha.
 
-Clique com o **botão direito no ícone da bandeja** para ver o status, pausar, ou sair.
-Use sempre o **Sair** do menu — ele fecha o ponto antes de encerrar. Se você matar o
-programa pelo Gerenciador de Tarefas com o ponto aberto, ele **fica aberto**.
+Um aviso aparece **dentro do jogo**, no canto superior direito, com um som curto:
+verde quando deu certo, vermelho quando falhou. O vermelho é o único que exige ação sua —
+significa que o ponto pode ter ficado aberto.
 
-| Cor do ícone | Significado |
+| Cor do ícone na bandeja | Significado |
 |---|---|
 | 🔘 Cinza | Aguardando o FiveM abrir |
 | 🟠 Laranja | Conectado, fora de serviço |
 | 🟢 Verde | Em serviço — ponto aberto |
 | ⚫ Escuro | Pausado, ou Discord não conectado |
 
+Clique com o **botão direito no ícone** para ver o status, pausar, desligar o som ou sair.
+
+> 🚨 **Use sempre o "Sair" do menu.** Ele fecha o ponto antes de encerrar. Se você matar o
+> programa pelo Gerenciador de Tarefas com o ponto aberto, ele **fica aberto** contando
+> hora sem você em serviço.
+
 ### Atualizações
 
-A partir da 1.0.1 o programa se atualiza sozinho. Você não precisa voltar aqui.
+O programa se atualiza sozinho — você não precisa voltar aqui. Cada atualização baixa
+menos de 1 MB, não o instalador inteiro.
+
+### Se algo der errado
+
+Bandeja → **Ver logs**. O histórico completo do que aconteceu está lá.
 
 ---
 
