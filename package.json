@@ -38,6 +38,13 @@
       "!**/*.har",
       "!**/debug-*"
     ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "guizss",
+        "repo": "mtp-auto-timesheet"
+      }
+    ],
     "win": {
       "target": [
         {
