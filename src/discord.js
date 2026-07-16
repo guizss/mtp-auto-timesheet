@@ -3,7 +3,7 @@
 // A sessão fica na partition 'persist:discord', dentro do userData do usuário
 // (%APPDATA%/mtp-auto-timesheet). Cada pessoa faz o próprio login: nada de sessão
 // viaja no instalador.
-const { BrowserWindow } = require('electron');
+const { BrowserWindow, session } = require('electron');
 const { log } = require('./core/logger');
 
 // Canal do ponto da Polícia Capital (Metrópole). É só o link do canal —
@@ -108,12 +108,37 @@ async function waitFor(win, expression, timeoutMs, label) {
   throw new Error(`Timeout esperando: ${label}`);
 }
 
+// Existe alguma sessão salva? Numa instalação nova a resposta é não, e é
+// instantânea — não há cookie pra sondar.
+//
+// Consulta TODOS os cookies da partition, sem filtrar por domínio: ela é usada
+// só pro Discord, então qualquer cookie significa que já estivemos lá. Errar
+// dizendo "tem sessão" custa uma verificação de 25s; errar dizendo "não tem"
+// jogaria uma janela de login na cara de quem já está logado. Na dúvida, o
+// falso positivo é o lado barato.
+async function hasSavedSession() {
+  try {
+    const cookies = await session.fromPartition(PARTITION).cookies.get({});
+    return cookies.length > 0;
+  } catch {
+    return true; // na dúvida, faz a verificação completa
+  }
+}
+
 class DiscordClient {
   constructor() {
     this.loginWin = null;
   }
 
   async isLoggedIn() {
+    // Atalho da primeira execução. Sem isso o usuário instala e encara ~25s de
+    // tela vazia enquanto sondamos uma sessão que nunca existiu — e conclui que
+    // o programa travou. O login tem que ser a primeira coisa que ele vê.
+    if (!(await hasSavedSession())) {
+      log('Nenhuma sessão do Discord salva — primeira execução.');
+      return false;
+    }
+
     const win = createWindow(false);
     try {
       await loadUrl(win, DISCORD_HOME_URL);
