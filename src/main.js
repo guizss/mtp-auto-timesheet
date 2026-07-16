@@ -8,6 +8,7 @@ const { log, setLogFile } = require('./core/logger');
 const { DutyDetector, wireDetector, NUI_URL } = require('./core/detector');
 const { DiscordClient } = require('./discord');
 const { configureNotifier, attachNotifications } = require('./notifier');
+const { setupUpdater, updateReady, installNow, checkNow } = require('./updater');
 
 const ASSETS = path.join(__dirname, '..', 'assets');
 
@@ -87,9 +88,15 @@ function updateTray() {
   const { icon, label } = trayState();
   tray.setImage(iconFor(icon));
   tray.setToolTip(`auto-timesheet — ${label}`);
+  const pronta = updateReady();
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: `Status: ${label}`, enabled: false },
+    { label: `Versão ${app.getVersion()}`, enabled: false },
     { type: 'separator' },
+    ...(pronta ? [
+      { label: `Reiniciar e atualizar para ${pronta.version}`, click: () => installNow() },
+      { type: 'separator' },
+    ] : []),
     ...(loggedIn ? [] : [{ label: 'Entrar no Discord...', click: () => doLogin() }]),
     {
       label: 'Pausar',
@@ -112,6 +119,7 @@ function updateTray() {
       click: (item) => { setOpenAtLogin(item.checked); updateTray(); },
     },
     { type: 'separator' },
+    { label: 'Procurar atualização', enabled: app.isPackaged && !pronta, click: () => checkNow() },
     { label: 'Ver logs', click: () => { if (logFile) shell.openPath(logFile); } },
     { label: 'Sair', click: () => doQuit() },
   ]));
@@ -182,6 +190,12 @@ app.whenReady().then(async () => {
 
   configureNotifier(notificationsEnabled);
   discord = new DiscordClient();
+
+  // beforeInstall: o updater reinicia o app, então o ponto precisa fechar antes.
+  setupUpdater({
+    onChange: updateTray,
+    beforeInstall: () => stopMonitor('atualizando o programa'),
+  });
 
   // Primeira execução: liga o autostart por padrão, mas só uma vez —
   // se o usuário desmarcar depois, respeitamos a escolha dele.
