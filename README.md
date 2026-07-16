@@ -64,9 +64,28 @@ jogo voltar. Aí ele reconecta e reabre o ponto se você estiver em serviço.
 ```powershell
 npm install
 npm start            # roda em modo dev (Electron)
+npm test             # regressão do detector (~2min, não toca no seu Discord)
+npm run test:notif   # dispara os toasts pra conferir visualmente
 npm run icons        # regenera assets/ e build/icon.ico
 npm run dist         # gera dist/auto-timesheet-setup-x.y.z.exe (~78 MB)
 ```
+
+### Publicar uma atualização
+
+```powershell
+npm version patch                       # 1.0.1 -> 1.0.2 (commit + tag)
+$env:GH_TOKEN = gh auth token
+npm run publish                         # compila e sobe pra GitHub Releases
+gh release edit v1.0.2 --draft=false    # ← OBRIGATÓRIO
+git push --follow-tags
+```
+
+⚠️ **O electron-builder publica como _draft_.** Draft é invisível para o
+`electron-updater` — se você esquecer o `--draft=false`, ninguém recebe a
+atualização e nenhum erro aparece. É a pegadinha mais fácil de cair aqui.
+
+O auto-update só funciona **a partir da 1.0.1**, que foi a primeira versão a
+embutir o updater. Quem estiver na 1.0.0 precisa reinstalar na mão uma vez.
 
 ### 🚨 NUNCA empacote a sua sessão do Discord
 
