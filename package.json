@@ -10,7 +10,8 @@
     "start": "npm run icons && electron .",
     "test": "node test/reconexao.js",
     "test:notif": "electron test/notificacoes.js",
-    "icons": "node tools/make-icons.js",
+    "icons": "node tools/make-icons.js && node tools/make-sound.js",
+    "sound": "node tools/make-sound.js",
     "pack": "npm run icons && electron-builder --win --dir",
     "dist": "npm run icons && electron-builder --win",
     "publish": "npm run icons && electron-builder --win --publish always"

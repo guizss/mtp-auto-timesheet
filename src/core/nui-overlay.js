@@ -9,8 +9,11 @@
 // mensagem que pareça vinda do servidor.
 //
 // Sem Electron aqui: só CDP, pra continuar testável com node puro.
+const fs = require('fs');
+const path = require('path');
 const { log } = require('./logger');
 
+const ASSETS = path.join(__dirname, '..', '..', 'assets');
 const WORLD_NAME = 'mtpAutoTimesheetOverlay';
 const CONTAINER_ID = '__mtp_auto_timesheet_overlay__';
 const DEFAULT_DURATION_MS = 6000;
@@ -24,11 +27,34 @@ const COLORS = {
 };
 const BG_ALPHA = 0.82;
 
+// O som viaja embutido no script: a NUI é nui:// e não conseguiria buscar um
+// arquivo nosso do disco. Lido uma vez e cacheado (~15KB em base64).
+let soundCache = null;
+function soundDataUri() {
+  if (soundCache !== null) return soundCache;
+  try {
+    soundCache = `data:audio/wav;base64,${fs.readFileSync(path.join(ASSETS, 'notify.wav')).toString('base64')}`;
+  } catch {
+    soundCache = ''; // sem som é melhor que sem aviso
+  }
+  return soundCache;
+}
+
 // Instalado uma vez por contexto. Define __mtpAutoTimesheetPush para os avisos.
-const INSTALL_SOURCE = `
+const buildInstallSource = () => `
 (function(){
   var ID = ${JSON.stringify(CONTAINER_ID)};
   if (window.__mtpAutoTimesheetPush && document.getElementById(ID)) return 'already';
+
+  var SND = ${JSON.stringify(soundDataUri())};
+  var audio = null;
+  if (SND) {
+    try {
+      audio = new Audio(SND);
+      audio.volume = 0.45;
+      audio.preload = 'auto';
+    } catch (e) { audio = null; }
+  }
 
   var box = document.getElementById(ID);
   if (!box) {
@@ -83,6 +109,12 @@ const INSTALL_SOURCE = `
 
       while (box.children.length > 3) box.removeChild(box.firstChild);
 
+      // Reusa o mesmo Audio: avisos em sequência cortam o anterior em vez de
+      // empilhar barulho. O catch cobre bloqueio de autoplay sem quebrar o card.
+      if (audio && d.sound !== false) {
+        try { audio.currentTime = 0; var pr = audio.play(); if (pr && pr.catch) pr.catch(function(){}); } catch (e) {}
+      }
+
       setTimeout(function(){
         card.style.animation = 'ats-out 240ms ease-in both';
         setTimeout(function(){ if (card.parentNode) card.parentNode.removeChild(card); }, 240);
@@ -101,7 +133,7 @@ async function installOverlay(session, frameId) {
     frameId, worldName: WORLD_NAME, grantUniveralAccess: true,
   });
   const res = await session.send('Runtime.evaluate', {
-    expression: INSTALL_SOURCE,
+    expression: buildInstallSource(),
     contextId: iso.executionContextId,
     returnByValue: true,
   });
@@ -112,13 +144,14 @@ async function installOverlay(session, frameId) {
   return iso.executionContextId;
 }
 
-async function pushOverlay(session, contextId, { title, body, type = 'info', duration = DEFAULT_DURATION_MS }) {
+async function pushOverlay(session, contextId, { title, body, type = 'info', duration = DEFAULT_DURATION_MS, sound = true }) {
   const rgb = COLORS[type] || COLORS.info;
   const payload = JSON.stringify({
     title: String(title),
     body: String(body),
     bg: `rgba(${rgb},${BG_ALPHA})`,
     duration,
+    sound,
   });
   const res = await session.send('Runtime.evaluate', {
     // JSON.stringify duas vezes: uma pro payload, outra pra virar literal de string no JS.

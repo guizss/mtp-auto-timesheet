@@ -168,19 +168,19 @@ class DutyDetector extends EventEmitter {
   // Avisa o jogador DENTRO do jogo. Em fullscreen exclusive é o único jeito:
   // janela do Windows não aparece por cima do jogo nesse modo.
   // Retorna false se não der (sem FiveM, contexto morto) — aí o main cai na janela.
-  async notifyInGame(title, body, type = 'info') {
+  async notifyInGame(title, body, type = 'info', sound = true) {
     if (!this.session || !this.attached) return false;
     try {
       if (!this._overlayCtx) await this._installOverlay();
       if (!this._overlayCtx) return false;
-      return await pushOverlay(this.session, this._overlayCtx, { title, body, type });
+      return await pushOverlay(this.session, this._overlayCtx, { title, body, type, sound });
     } catch (err) {
       // Contexto pode ter morrido numa navegação: tenta reinstalar uma vez.
       this._overlayCtx = null;
       try {
         await this._installOverlay();
         if (!this._overlayCtx) return false;
-        return await pushOverlay(this.session, this._overlayCtx, { title, body, type });
+        return await pushOverlay(this.session, this._overlayCtx, { title, body, type, sound });
       } catch (err2) {
         log(`Overlay na NUI falhou: ${err2.message}`);
         return false;

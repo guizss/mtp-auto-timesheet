@@ -69,6 +69,11 @@ function notificationsEnabled() {
   return cfg.notifications !== false; // ligadas por padrão
 }
 
+function soundEnabled() {
+  const cfg = readConfig();
+  return cfg.sound !== false; // ligado por padrão
+}
+
 // -------- Bandeja --------
 
 function trayState() {
@@ -112,6 +117,13 @@ function updateTray() {
       type: 'checkbox',
       checked: notificationsEnabled(),
       click: (item) => { writeConfig({ notifications: item.checked }); updateTray(); },
+    },
+    {
+      label: 'Som',
+      type: 'checkbox',
+      checked: soundEnabled(),
+      enabled: notificationsEnabled(),
+      click: (item) => { writeConfig({ sound: item.checked }); updateTray(); },
     },
     {
       label: 'Iniciar com o Windows',
@@ -193,10 +205,11 @@ app.whenReady().then(async () => {
   updateTray();
 
   // O overlay vive na sessão CDP do detector, que só existe com o FiveM aberto.
-  configureNotifier(
-    notificationsEnabled,
-    (t, b, type) => (detector ? detector.notifyInGame(t, b, type) : false),
-  );
+  configureNotifier({
+    enabled: notificationsEnabled,
+    sound: soundEnabled,
+    inGame: (t, b, type, som) => (detector ? detector.notifyInGame(t, b, type, som) : false),
+  });
   discord = new DiscordClient();
 
   // beforeInstall: o updater reinicia o app, então o ponto precisa fechar antes.

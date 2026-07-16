@@ -33,6 +33,7 @@ const BG_ALPHA = 0.82;
 
 const active = []; // janelas na tela, de baixo pra cima
 let iconCache = null;
+let soundCache = null;
 
 function iconDataUri() {
   if (iconCache !== null) return iconCache;
@@ -45,12 +46,23 @@ function iconDataUri() {
   return iconCache;
 }
 
+function soundDataUri() {
+  if (soundCache !== null) return soundCache;
+  try {
+    soundCache = `data:audio/wav;base64,${fs.readFileSync(path.join(ASSETS, 'notify.wav')).toString('base64')}`;
+  } catch {
+    soundCache = ''; // sem som é melhor que sem aviso
+  }
+  return soundCache;
+}
+
 const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => (
   { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
 ));
 
-function buildHtml(title, body, bg) {
+function buildHtml(title, body, bg, sound) {
   const icon = iconDataUri();
+  const snd = sound ? soundDataUri() : '';
   return `<!doctype html>
 <html><head><meta charset="utf-8">
 <style>
@@ -95,6 +107,9 @@ function buildHtml(title, body, bg) {
       <div class="b">${escapeHtml(body)}</div>
     </div>
   </div>
+  <!-- autoplay declarativo, não JS: script inline não roda neste contexto
+       (foi o que deixou o card invisível na primeira versão). -->
+  ${snd ? `<audio src="${snd}" autoplay></audio>` : ''}
 </body></html>`;
 }
 
@@ -119,8 +134,8 @@ function dismiss(win) {
   layout();
 }
 
-// type: 'success' | 'error' | 'info'
-function showToast(title, body, type = 'info') {
+// type: 'success' | 'warning' | 'error' | 'info'
+function showToast(title, body, type = 'info', sound = true) {
   try {
     while (active.length >= MAX_VISIBLE) dismiss(active[0]);
 
@@ -148,7 +163,7 @@ function showToast(title, body, type = 'info') {
     win.setVisibleOnAllWorkspaces(true);
 
     const bg = `rgba(${COLORS[type] || COLORS.info},${BG_ALPHA})`;
-    win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(buildHtml(title, body, bg))}`);
+    win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(buildHtml(title, body, bg, sound))}`);
 
     win.once('ready-to-show', () => {
       if (win.isDestroyed()) return;

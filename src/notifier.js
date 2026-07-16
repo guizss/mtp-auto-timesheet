@@ -10,12 +10,14 @@ const DEDUP_WINDOW_MS = 60_000;
 
 let lastNotif = { key: '', at: 0 };
 let isEnabled = () => true;
+let soundOn = () => true;
 let notifyInGame = async () => false;
 
 // main.js injeta a leitura do config e o caminho do overlay na NUI.
-function configureNotifier(enabledFn, inGameFn) {
-  isEnabled = enabledFn;
-  if (inGameFn) notifyInGame = inGameFn;
+function configureNotifier({ enabled, inGame, sound } = {}) {
+  if (enabled) isEnabled = enabled;
+  if (inGame) notifyInGame = inGame;
+  if (sound) soundOn = sound;
 }
 
 // Dedup: quando o FiveM cai, o fechamento tenta 5 vezes e cada falha traria
@@ -30,10 +32,11 @@ async function notify(title, body, type = 'info') {
   if (key === lastNotif.key && now - lastNotif.at < DEDUP_WINDOW_MS) return false;
   lastNotif = { key, at: now };
 
+  const som = soundOn();
   try {
-    if (await notifyInGame(title, body, type)) return true;
+    if (await notifyInGame(title, body, type, som)) return true;
   } catch { /* cai pro fallback */ }
-  return showToast(title, body, type);
+  return showToast(title, body, type, som);
 }
 
 // Liga os eventos do wireDetector aos avisos na tela.
