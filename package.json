@@ -1,9 +1,9 @@
 {
-  "name": "auto-timesheet",
-  "productName": "auto-timesheet",
+  "name": "mtp-auto-timesheet",
+  "productName": "mtp-auto-timesheet",
   "version": "1.0.2",
   "description": "Abre e fecha o ponto no Discord automaticamente conforme o serviço no FiveM",
-  "author": "auto-timesheet",
+  "author": "@guip1_",
   "license": "UNLICENSED",
   "main": "src/main.js",
   "scripts": {
@@ -24,8 +24,9 @@
     "electron-builder": "^25.1.8"
   },
   "build": {
-    "appId": "gg.metropole.autotimesheet",
-    "productName": "auto-timesheet",
+    "appId": "gg.metropole.mtpautotimesheet",
+    "productName": "mtp-auto-timesheet",
+    "copyright": "Desenvolvido por @guip1_",
     "directories": {
       "output": "dist",
       "buildResources": "build"
@@ -65,9 +66,9 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "auto-timesheet",
+      "shortcutName": "mtp-auto-timesheet",
       "runAfterFinish": true,
-      "artifactName": "auto-timesheet-setup-${version}.${ext}"
+      "artifactName": "mtp-auto-timesheet-setup-${version}.${ext}"
     }
   }
 }

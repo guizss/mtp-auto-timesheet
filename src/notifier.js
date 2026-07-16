@@ -1,87 +1,54 @@
-// Toasts do Windows. Separado do main.js pra poder ser testado sem subir o app inteiro.
-const { Notification } = require('electron');
-const { execFileSync } = require('child_process');
-const path = require('path');
-const { log } = require('./core/logger');
+// Avisos ao usuário. Separado do main.js pra poder ser testado sem subir o app inteiro.
+//
+// Usa uma janela desenhada pelo próprio app (src/toast.js), e não o toast do
+// Windows: o nativo depende de o usuário ter as notificações ligadas em
+// Configurações, e quando estão desligadas o Electron não avisa — ele
+// silenciosamente não aparece. Isso já mordeu aqui.
+const { showToast } = require('./toast');
 
-const ASSETS = path.join(__dirname, '..', 'assets');
 const DEDUP_WINDOW_MS = 60_000;
 
 let lastNotif = { key: '', at: 0 };
 let isEnabled = () => true;
+let notifyInGame = async () => false;
 
-// Notification.isSupported() só diz se o SO tem o recurso — retorna true mesmo
-// com o usuário tendo desligado as notificações em Configurações. Sem esta
-// checagem o app falha calado: tenta notificar, não dá erro, e nada aparece.
-function toastsAllowedByWindows() {
-  if (process.platform !== 'win32') return true;
-  try {
-    const out = execFileSync('reg', [
-      'query', 'HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\PushNotifications',
-      '/v', 'ToastEnabled',
-    ], { encoding: 'utf8', windowsHide: true });
-    const m = out.match(/ToastEnabled\s+REG_DWORD\s+0x([0-9a-f]+)/i);
-    return m ? parseInt(m[1], 16) !== 0 : true; // valor ausente = padrão ligado
-  } catch {
-    return true; // na dúvida, não bloqueia
-  }
-}
-
-// Chamado no boot pra deixar o diagnóstico no log, onde dá pra ver depois.
-function reportNotificationHealth() {
-  if (!Notification.isSupported()) {
-    log('AVISO: este sistema não suporta notificações.');
-    return false;
-  }
-  if (!toastsAllowedByWindows()) {
-    log('AVISO: as notificações estão DESLIGADAS no Windows (ToastEnabled=0). ' +
-        'Nenhum toast vai aparecer, de nenhum programa. ' +
-        'Ligue em Configurações > Sistema > Notificações.');
-    return false;
-  }
-  log('Notificações do Windows: OK.');
-  return true;
-}
-
-// main.js injeta a leitura do config (o usuário pode desligar na bandeja).
-function configureNotifier(enabledFn) {
+// main.js injeta a leitura do config e o caminho do overlay na NUI.
+function configureNotifier(enabledFn, inGameFn) {
   isEnabled = enabledFn;
+  if (inGameFn) notifyInGame = inGameFn;
 }
 
 // Dedup: quando o FiveM cai, o fechamento tenta 5 vezes e cada falha traria
-// o mesmo toast. Uma vez por episódio basta.
-function notify(title, body) {
-  if (!isEnabled() || !Notification.isSupported()) return false;
+// o mesmo aviso. Uma vez por episódio basta.
+// Prefere o overlay dentro do jogo: em fullscreen exclusive a janela do Windows
+// não aparece. Cai pra janela quando o FiveM está fechado — que é justamente
+// quando avisos como "não consegui fechar o ponto" mais importam.
+async function notify(title, body, type = 'info') {
+  if (!isEnabled()) return false;
   const key = `${title}|${body}`;
   const now = Date.now();
   if (key === lastNotif.key && now - lastNotif.at < DEDUP_WINDOW_MS) return false;
   lastNotif = { key, at: now };
+
   try {
-    new Notification({ title, body, icon: path.join(ASSETS, 'icon.png'), silent: false }).show();
-    return true;
-  } catch (err) {
-    log(`Não consegui notificar: ${err.message}`);
-    return false;
-  }
+    if (await notifyInGame(title, body, type)) return true;
+  } catch { /* cai pro fallback */ }
+  return showToast(title, body, type);
 }
 
-// Liga os eventos do wireDetector aos toasts.
+// Liga os eventos do wireDetector aos avisos na tela.
 function attachNotifications(ctl) {
-  ctl.on('ponto', ({ open, reason }) => {
-    if (open) notify('Ponto aberto ✅', `Ponto aberto no Discord — ${reason}.`);
-    else notify('Ponto fechado ✅', `Ponto fechado no Discord — ${reason}.`);
+  // O motivo fica só no log; no aviso ele só polui — o jogador acabou de fazer
+  // a ação, não precisa que o programa o lembre disso.
+  ctl.on('ponto', ({ open }) => {
+    if (open) notify('Ponto aberto', 'Ponto aberto no Discord.', 'success');
+    else notify('Ponto fechado', 'Ponto fechado no Discord.', 'success');
   });
 
   // Falha é o que o usuário mais precisa saber: o ponto pode ter ficado aberto.
   ctl.on('erro', ({ action, message }) => {
-    notify(`Falha ao ${action} o ponto ⚠️`, `${message} Confira o Discord manualmente.`);
+    notify(`Falha ao ${action} o ponto`, `${message} Confira o Discord manualmente.`, 'error');
   });
 }
 
-module.exports = {
-  notify,
-  configureNotifier,
-  attachNotifications,
-  reportNotificationHealth,
-  toastsAllowedByWindows,
-};
+module.exports = { notify, configureNotifier, attachNotifications };

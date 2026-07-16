@@ -3,8 +3,9 @@
 const WebSocket = require('ws');
 const { EventEmitter } = require('events');
 const { log } = require('./logger');
+const { installOverlay, pushOverlay } = require('./nui-overlay');
 
-const NUI_URL = process.env.AUTO_TIMESHEET_NUI_URL || 'http://localhost:13172/';
+const NUI_URL = process.env.MTP_AUTO_TIMESHEET_NUI_URL || 'http://localhost:13172/';
 const HEARTBEAT_MS = 5_000;         // pinga /json/list pra confirmar NUI viva
 const NO_CONN_CONFIRM_TICKS = 3;    // 3 heartbeats falhados (~15s) = desconectou
 const REATTACH_DELAY_MS = 2_000;
@@ -16,8 +17,8 @@ const CLOSE_RETRY_DELAY_MS = 10_000;
 
 const CHARACTER_DATA_URL = 'https://api.metropole.gg/gameapi-01/character/data';
 
-const BINDING_NAME = 'autoTimesheetOnStatus';
-const ISOLATED_WORLD_NAME = 'autoTimesheetWorld';
+const BINDING_NAME = 'mtpAutoTimesheetOnStatus';
+const ISOLATED_WORLD_NAME = 'mtpAutoTimesheetWorld';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -105,8 +106,8 @@ function flattenFrames(node, acc = []) {
 
 const OBSERVER_SOURCE = `
 (function(){
-  if (window.__autoTimesheetInstalled) return 'already';
-  window.__autoTimesheetInstalled = true;
+  if (window.__mtpAutoTimesheetInstalled) return 'already';
+  window.__mtpAutoTimesheetInstalled = true;
 
   var lastText = null;
   var send = function(text){
@@ -160,6 +161,43 @@ class DutyDetector extends EventEmitter {
     this._pollTimer = null;
     this._polling = false;
     this._bearerToken = null;         // JWT extraído de localStorage/sessionStorage
+    this._overlayCtx = null;          // contexto isolado do overlay na raiz da NUI
+    this._rootFrameId = null;
+  }
+
+  // Avisa o jogador DENTRO do jogo. Em fullscreen exclusive é o único jeito:
+  // janela do Windows não aparece por cima do jogo nesse modo.
+  // Retorna false se não der (sem FiveM, contexto morto) — aí o main cai na janela.
+  async notifyInGame(title, body, type = 'info') {
+    if (!this.session || !this.attached) return false;
+    try {
+      if (!this._overlayCtx) await this._installOverlay();
+      if (!this._overlayCtx) return false;
+      return await pushOverlay(this.session, this._overlayCtx, { title, body, type });
+    } catch (err) {
+      // Contexto pode ter morrido numa navegação: tenta reinstalar uma vez.
+      this._overlayCtx = null;
+      try {
+        await this._installOverlay();
+        if (!this._overlayCtx) return false;
+        return await pushOverlay(this.session, this._overlayCtx, { title, body, type });
+      } catch (err2) {
+        log(`Overlay na NUI falhou: ${err2.message}`);
+        return false;
+      }
+    }
+  }
+
+  async _installOverlay() {
+    if (!this.session || !this._rootFrameId) return false;
+    try {
+      this._overlayCtx = await installOverlay(this.session, this._rootFrameId);
+      return true;
+    } catch (err) {
+      this._overlayCtx = null;
+      log(`Não consegui instalar o overlay na NUI: ${err.message}`);
+      return false;
+    }
   }
 
   // Roda até stop() ser chamado explicitamente. Nunca desiste sozinho:
@@ -224,6 +262,8 @@ class DutyDetector extends EventEmitter {
         for (const [fid, cid] of this._mainContextByFrame) {
           if (cid === ev.executionContextId) { this._mainContextByFrame.delete(fid); break; }
         }
+        // Se o mundo do overlay morreu, marca pra reinstalar no próximo aviso.
+        if (this._overlayCtx === ev.executionContextId) this._overlayCtx = null;
       });
 
       session.on('Runtime.bindingCalled', (ev) => {
@@ -260,6 +300,17 @@ class DutyDetector extends EventEmitter {
 
       // Primeira tentativa de injeção (se inventário já estiver aberto)
       await this._tryInjectObserver(session);
+
+      // Guarda o frame raiz e instala o overlay de avisos nele.
+      this.session = session;
+      try {
+        const { frameTree } = await session.send('Page.getFrameTree');
+        this._rootFrameId = frameTree.frame.id;
+        this._overlayCtx = null;
+        await this._installOverlay();
+      } catch (err) {
+        log(`Não achei o frame raiz pro overlay: ${err.message}`);
+      }
 
       // Tenta obter o Bearer token de imediato pra já poder pollar a API
       this.session = session;
@@ -341,7 +392,7 @@ class DutyDetector extends EventEmitter {
     for (const frame of frames) {
       try {
         const iso = await this.session.send('Page.createIsolatedWorld', {
-          frameId: frame.id, worldName: 'autoTimesheetTokenScan', grantUniveralAccess: true,
+          frameId: frame.id, worldName: 'mtpAutoTimesheetTokenScan', grantUniveralAccess: true,
         });
         const res = await this.session.send('Runtime.evaluate', {
           expression: finder, contextId: iso.executionContextId, returnByValue: true,
@@ -492,7 +543,7 @@ class DutyDetector extends EventEmitter {
 // Liga os eventos do detector às ações de Abrir/Fechar Ponto no Discord.
 // clickButton(texto) é injetável para permitir teste sem Discord de verdade.
 // Retorna um EventEmitter que emite:
-//   'ponto' ({open, reason}) — a bandeja mostra o status e o main notifica o usuário
+//   'ponto' ({open}) — a bandeja mostra o status e o main avisa o usuário
 //   'erro'  ({action, message}) — clique falhou; quem escuta decide como avisar
 function wireDetector(detector, clickButton) {
   const ctl = new EventEmitter();
@@ -500,14 +551,14 @@ function wireDetector(detector, clickButton) {
   let closing = false;
   let opening = false;
 
-  const setPonto = (open, reason) => { pontoOpen = open; ctl.emit('ponto', { open, reason }); };
+  const setPonto = (open) => { pontoOpen = open; ctl.emit('ponto', { open }); };
 
   const doOpen = async () => {
     if (pontoOpen || opening) return false;
     opening = true;
     try {
       await clickButton('Abrir Ponto');
-      setPonto(true, 'entrou em serviço');
+      setPonto(true);
       log('>>> PONTO ABERTO <<<');
       return true;
     } catch (e) {
@@ -522,7 +573,8 @@ function wireDetector(detector, clickButton) {
     closing = true;
     try {
       await clickButton('Fechar Ponto');
-      setPonto(false, reason);
+      setPonto(false);
+      // O motivo fica só aqui, no log, pra diagnóstico — fora do aviso na tela.
       log(`>>> PONTO FECHADO (${reason}) <<<`);
       return true;
     } catch (e) {

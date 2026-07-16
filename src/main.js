@@ -7,10 +7,12 @@ const fs = require('fs');
 const { log, setLogFile } = require('./core/logger');
 const { DutyDetector, wireDetector, NUI_URL } = require('./core/detector');
 const { DiscordClient } = require('./discord');
-const { configureNotifier, attachNotifications, reportNotificationHealth, toastsAllowedByWindows } = require('./notifier');
+const { configureNotifier, attachNotifications } = require('./notifier');
+const { closeAllToasts } = require('./toast');
 const { setupUpdater, updateReady, installNow, checkNow } = require('./updater');
 
 const ASSETS = path.join(__dirname, '..', 'assets');
+const AUTOR = '@guip1_';
 
 let tray = null;
 let detector = null;
@@ -23,7 +25,7 @@ let logFile = null;
 
 // O Windows agrupa toasts pelo AppUserModelID. Sem isso, em vez do nome do app
 // a notificação sai como "electron.app.Electron".
-app.setAppUserModelId('gg.metropole.autotimesheet');
+app.setAppUserModelId('gg.metropole.mtpautotimesheet');
 
 // Só uma instância: duas rodando dariam cliques duplicados no ponto.
 if (!app.requestSingleInstanceLock()) app.exit(0);
@@ -87,11 +89,11 @@ function updateTray() {
   if (!tray || quitting) return;
   const { icon, label } = trayState();
   tray.setImage(iconFor(icon));
-  tray.setToolTip(`auto-timesheet — ${label}`);
+  tray.setToolTip(`mtp-auto-timesheet — ${label}`);
   const pronta = updateReady();
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: `Status: ${label}`, enabled: false },
-    { label: `Versão ${app.getVersion()}`, enabled: false },
+    { label: `Versão ${app.getVersion()} — por ${AUTOR}`, enabled: false },
     { type: 'separator' },
     ...(pronta ? [
       { label: `Reiniciar e atualizar para ${pronta.version}`, click: () => installNow() },
@@ -105,17 +107,12 @@ function updateTray() {
       enabled: loggedIn,
       click: (item) => togglePause(item.checked),
     },
-    // Se o Windows bloqueia toasts, a checkbox do app é inócua — dizer isso
-    // aqui evita o usuário achar que o programa está quebrado.
-    ...(toastsAllowedByWindows() ? [{
+    {
       label: 'Notificações',
       type: 'checkbox',
       checked: notificationsEnabled(),
       click: (item) => { writeConfig({ notifications: item.checked }); updateTray(); },
-    }] : [{
-      label: 'Notificações desligadas no Windows — clique para ajustar',
-      click: () => shell.openExternal('ms-settings:notifications'),
-    }]),
+    },
     {
       label: 'Iniciar com o Windows',
       type: 'checkbox',
@@ -177,8 +174,9 @@ async function doLogin() {
 async function doQuit() {
   if (quitting) return;
   quitting = true;
-  if (tray) tray.setToolTip('auto-timesheet — encerrando...');
+  if (tray) tray.setToolTip('mtp-auto-timesheet — encerrando...');
   log('Encerrando a pedido do usuário.');
+  closeAllToasts();
   try { await stopMonitor('programa encerrado'); } catch (err) { log(`Erro ao encerrar: ${err.message}`); }
   app.exit(0);
 }
@@ -186,15 +184,19 @@ async function doQuit() {
 // -------- Boot --------
 
 app.whenReady().then(async () => {
-  logFile = setLogFile(path.join(app.getPath('userData'), 'logs', 'auto-timesheet.log'));
-  log(`auto-timesheet ${app.getVersion()} iniciando. FiveM esperado em ${NUI_URL}`);
+  logFile = setLogFile(path.join(app.getPath('userData'), 'logs', 'mtp-auto-timesheet.log'));
+  log(`mtp-auto-timesheet ${app.getVersion()} — desenvolvido por ${AUTOR}`);
+  log(`Iniciando. FiveM esperado em ${NUI_URL}`);
   log(`Logs em ${logFile}`);
 
   tray = new Tray(iconFor('waiting'));
   updateTray();
 
-  configureNotifier(notificationsEnabled);
-  reportNotificationHealth();
+  // O overlay vive na sessão CDP do detector, que só existe com o FiveM aberto.
+  configureNotifier(
+    notificationsEnabled,
+    (t, b, type) => (detector ? detector.notifyInGame(t, b, type) : false),
+  );
   discord = new DiscordClient();
 
   // beforeInstall: o updater reinicia o app, então o ponto precisa fechar antes.
@@ -213,7 +215,7 @@ app.whenReady().then(async () => {
     log('Login não concluído. Use "Entrar no Discord..." na bandeja quando quiser.');
     dialog.showMessageBox({
       type: 'info',
-      title: 'auto-timesheet',
+      title: 'mtp-auto-timesheet',
       message: 'Login do Discord não concluído.',
       detail: 'O programa continua na bandeja (perto do relógio). Clique com o botão direito no ícone e escolha "Entrar no Discord..." para tentar de novo.',
     }).catch(() => {});

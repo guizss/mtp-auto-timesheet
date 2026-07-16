@@ -1,6 +1,8 @@
+**Desenvolvido por @guip1_**
+
 ## 📥 Como instalar
 
-**Baixe o arquivo `auto-timesheet-setup-x.y.z.exe`** na lista de Assets aqui embaixo.
+**Baixe o arquivo `mtp-auto-timesheet-setup-x.y.z.exe`** na lista de Assets aqui embaixo.
 É o único que você precisa — ignore o resto.
 
 > Os arquivos `latest.yml`, `.blockmap` e "Source code" são usados pelo programa e por
@@ -47,3 +49,7 @@ Este programa **automatiza a sua conta de usuário do Discord**. O Discord chama
 *self-bot* e proíbe nos Termos de Serviço — a punição típica é **encerramento da conta**.
 
 O risco é seu. Instale sabendo disso.
+
+---
+
+Desenvolvido por **@guip1_** · [github.com/guizss/mtp-auto-timesheet](https://github.com/guizss/mtp-auto-timesheet)

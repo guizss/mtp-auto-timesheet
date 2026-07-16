@@ -3,7 +3,7 @@
 const http = require('http');
 const { WebSocketServer } = require('ws');
 
-const BINDING_NAME = 'autoTimesheetOnStatus';
+const BINDING_NAME = 'mtpAutoTimesheetOnStatus';
 
 function startMockFiveM(port) {
   const clients = new Set();

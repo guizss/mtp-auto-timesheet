@@ -1,4 +1,6 @@
-# auto-timesheet
+# mtp-auto-timesheet
+
+**Desenvolvido por [@guip1_](https://discord.com/users/guip1_)**
 
 App de bandeja que abre e fecha o **ponto no Discord** automaticamente, conforme você
 entra e sai de serviço na Polícia Capital no FiveM (Metrópole).
@@ -21,7 +23,7 @@ de espalhar isso na facção.
 
 ## Para quem vai usar
 
-1. Rode `auto-timesheet-setup-x.y.z.exe`.
+1. Rode `mtp-auto-timesheet-setup-x.y.z.exe`.
 2. Na primeira vez, uma janela do Discord abre — **faça login normalmente**. Não precisa
    apertar nada no teclado: o app detecta o login sozinho e não pede de novo.
 3. Pronto. O app vive perto do relógio, no ícone da bandeja.
@@ -49,7 +51,7 @@ Avisos repetidos são agrupados: quando o FiveM cai, o fechamento tenta 5 vezes,
 recebe um aviso só. Dá pra desligar tudo pelo menu da bandeja.
 
 Se nenhuma notificação aparecer, verifique o **Assistente de Foco** do Windows e se
-`auto-timesheet` está permitido em *Configurações → Sistema → Notificações*.
+`mtp-auto-timesheet` está permitido em *Configurações → Sistema → Notificações*.
 
 ### Comportamento quando o jogo fecha
 
@@ -67,7 +69,7 @@ npm start            # roda em modo dev (Electron)
 npm test             # regressão do detector (~2min, não toca no seu Discord)
 npm run test:notif   # dispara os toasts pra conferir visualmente
 npm run icons        # regenera assets/ e build/icon.ico
-npm run dist         # gera dist/auto-timesheet-setup-x.y.z.exe (~78 MB)
+npm run dist         # gera dist/mtp-auto-timesheet-setup-x.y.z.exe (~78 MB)
 ```
 
 ### Publicar uma atualização
@@ -90,7 +92,7 @@ embutir o updater. Quem estiver na 1.0.0 precisa reinstalar na mão uma vez.
 ### 🚨 NUNCA empacote a sua sessão do Discord
 
 `user-data/` (perfil antigo do Playwright) e o `userData` do Electron
-(`%APPDATA%\auto-timesheet`) contêm **os cookies de login da sua conta**. Se forem parar
+(`%APPDATA%\mtp-auto-timesheet`) contêm **os cookies de login da sua conta**. Se forem parar
 no instalador, todo mundo que instalar vai bater ponto **na sua conta**.
 
 Por isso o `build.files` do `package.json` é uma **allowlist** (`src/`, `assets/`,
@@ -132,7 +134,7 @@ segurança → Para desenvolvedores).
   clicar nos botões. Sessão em `persist:discord`, dentro do userData de cada usuário.
 - `src/main.js` — bandeja, menu, autostart e o ciclo de vida.
 
-Configuração e logs de cada usuário ficam em `%APPDATA%\auto-timesheet\`.
+Configuração e logs de cada usuário ficam em `%APPDATA%\mtp-auto-timesheet\`.
 
-Para testar o detector contra um FiveM falso, use a variável `AUTO_TIMESHEET_NUI_URL`
+Para testar o detector contra um FiveM falso, use a variável `MTP_AUTO_TIMESHEET_NUI_URL`
 para apontar para outra porta.

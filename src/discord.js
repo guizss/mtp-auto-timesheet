@@ -1,7 +1,7 @@
 // Camada Discord sobre o Chromium do próprio Electron (substitui o Playwright).
 //
 // A sessão fica na partition 'persist:discord', dentro do userData do usuário
-// (%APPDATA%/auto-timesheet). Cada pessoa faz o próprio login: nada de sessão
+// (%APPDATA%/mtp-auto-timesheet). Cada pessoa faz o próprio login: nada de sessão
 // viaja no instalador.
 const { BrowserWindow } = require('electron');
 const { log } = require('./core/logger');
@@ -70,7 +70,7 @@ function createWindow(show) {
     show,
     width: 1180,
     height: 820,
-    title: 'auto-timesheet — Discord',
+    title: 'mtp-auto-timesheet — Discord',
     autoHideMenuBar: true,
     webPreferences: {
       partition: PARTITION,

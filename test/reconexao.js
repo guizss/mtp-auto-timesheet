@@ -4,7 +4,7 @@
 // Roda numa porta própria pra não encostar num FiveM real na 13172.
 // Leva ~2min (os tempos são reais: heartbeat de 5s, retry de 10s).
 const PORT = 13999;
-process.env.AUTO_TIMESHEET_NUI_URL = `http://localhost:${PORT}/`;
+process.env.MTP_AUTO_TIMESHEET_NUI_URL = `http://localhost:${PORT}/`;
 
 const { EventEmitter } = require('events');
 const { startMockFiveM } = require('./mock-fivem');
