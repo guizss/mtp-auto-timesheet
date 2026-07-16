@@ -1,0 +1,61 @@
+{
+  "name": "auto-timesheet",
+  "productName": "auto-timesheet",
+  "version": "1.0.0",
+  "description": "Abre e fecha o ponto no Discord automaticamente conforme o serviço no FiveM",
+  "author": "auto-timesheet",
+  "license": "UNLICENSED",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "npm run icons && electron .",
+    "test": "node test/reconexao.js",
+    "test:notif": "electron test/notificacoes.js",
+    "icons": "node tools/make-icons.js",
+    "pack": "npm run icons && electron-builder --win --dir",
+    "dist": "npm run icons && electron-builder --win"
+  },
+  "dependencies": {
+    "ws": "^8.21.1"
+  },
+  "devDependencies": {
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "gg.metropole.autotimesheet",
+    "productName": "auto-timesheet",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "package.json",
+      "!**/user-data",
+      "!**/*.har",
+      "!**/debug-*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "auto-timesheet",
+      "runAfterFinish": true,
+      "artifactName": "auto-timesheet-setup-${version}.${ext}"
+    }
+  }
+}

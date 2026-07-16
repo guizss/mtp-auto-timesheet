@@ -1,0 +1,17 @@
+node_modules/
+
+# Sessão do Discord — NUNCA commitar nem empacotar (login da conta).
+user-data/
+
+# Gerados por npm run icons / dist
+assets/
+build/
+dist/
+
+# Dumps de debug e capturas de rede
+*.log
+*.har
+debug-*
+
+# Config local da ferramenta (caminhos da máquina de quem desenvolve)
+.claude/settings.local.json
