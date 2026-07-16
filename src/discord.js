@@ -6,9 +6,9 @@
 const { BrowserWindow } = require('electron');
 const { log } = require('./core/logger');
 
-const GUILD_ID = '1195033612349886504';
-const CHANNEL_ID = '1195154426680324248';
-const DISCORD_CHANNEL_URL = `https://discord.com/channels/${GUILD_ID}/${CHANNEL_ID}`;
+// Canal do ponto da Polícia Capital (Metrópole). É só o link do canal —
+// dá pra trocar por outro servidor mudando esta linha.
+const DISCORD_CHANNEL_URL = 'https://discord.com/channels/1195033612349886504/1195154426680324248';
 const DISCORD_HOME_URL = 'https://discord.com/channels/@me';
 const PARTITION = 'persist:discord';
 
@@ -200,4 +200,4 @@ class DiscordClient {
   }
 }
 
-module.exports = { DiscordClient, DISCORD_CHANNEL_URL };
+module.exports = { DiscordClient };
