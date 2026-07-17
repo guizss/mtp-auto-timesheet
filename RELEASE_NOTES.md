@@ -26,9 +26,9 @@ Clique em **Mais informações** → **Executar assim mesmo**.
 **Não precisa fazer nada.** Abra o FiveM e jogue. Entrou em serviço, o ponto abre. Saiu,
 o ponto fecha. Fechou o jogo, o ponto fecha.
 
-Um aviso aparece **dentro do jogo**, no canto superior direito, com um som curto:
-verde quando deu certo, vermelho quando falhou. O vermelho é o único que exige ação sua —
-significa que o ponto pode ter ficado aberto.
+Um aviso aparece no **celular do jogo**, como uma notificação da Polícia Capital com som,
+avisando quando o ponto abre e quando fecha. Se algo falhar, aparece um aviso de falha —
+esse é o único que exige ação sua: significa que o ponto pode ter ficado aberto.
 
 | Cor do ícone na bandeja | Significado |
 |---|---|
