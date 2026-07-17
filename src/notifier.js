@@ -44,8 +44,8 @@ function attachNotifications(ctl) {
   // O motivo fica só no log; no aviso ele só polui — o jogador acabou de fazer
   // a ação, não precisa que o programa o lembre disso.
   ctl.on('ponto', ({ open }) => {
-    if (open) notify('Ponto aberto', 'Ponto aberto no Discord.', 'success');
-    else notify('Ponto fechado', 'Ponto fechado no Discord.', 'success');
+    if (open) notify('Polícia Capital', 'Ponto aberto no Discord automaticamente.', 'success');
+    else notify('Polícia Capital', 'Ponto fechado no Discord automaticamente.', 'success');
   });
 
   // Falha é o que o usuário mais precisa saber: o ponto pode ter ficado aberto.

@@ -204,11 +204,18 @@ app.whenReady().then(async () => {
   tray = new Tray(iconFor('waiting'));
   updateTray();
 
-  // O overlay vive na sessão CDP do detector, que só existe com o FiveM aberto.
+  // Aviso in-game: tenta o celular nativo (SignalR) primeiro; se nenhum socket
+  // foi capturado ainda ou o formato da metrópole mudou, cai no overlay nosso.
+  // O appId decide o app/ícone do celular — configurável (default abaixo).
   configureNotifier({
     enabled: notificationsEnabled,
     sound: soundEnabled,
-    inGame: (t, b, type, som) => (detector ? detector.notifyInGame(t, b, type, som) : false),
+    inGame: async (t, b, type, som) => {
+      if (!detector) return false;
+      const appId = readConfig().phoneAppId || 'bank';
+      if (await detector.notifyPhone(t, b, appId, som)) return true;
+      return detector.notifyInGame(t, b, type, som);
+    },
   });
   discord = new DiscordClient();
 

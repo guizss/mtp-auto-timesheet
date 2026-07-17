@@ -32,19 +32,7 @@ const COLORS = {
 const BG_ALPHA = 0.82;
 
 const active = []; // janelas na tela, de baixo pra cima
-let iconCache = null;
 let soundCache = null;
-
-function iconDataUri() {
-  if (iconCache !== null) return iconCache;
-  try {
-    const buf = fs.readFileSync(path.join(ASSETS, 'icon.png'));
-    iconCache = `data:image/png;base64,${buf.toString('base64')}`;
-  } catch {
-    iconCache = ''; // sem ícone é melhor que sem notificação
-  }
-  return iconCache;
-}
 
 function soundDataUri() {
   if (soundCache !== null) return soundCache;
@@ -61,7 +49,6 @@ const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => (
 ));
 
 function buildHtml(title, body, bg, sound) {
-  const icon = iconDataUri();
   const snd = sound ? soundDataUri() : '';
   return `<!doctype html>
 <html><head><meta charset="utf-8">
@@ -90,7 +77,6 @@ function buildHtml(title, body, bg, sound) {
     from { opacity: 1; transform: translateX(0); }
     to   { opacity: 0; transform: translateX(24px); }
   }
-  img { width: 34px; height: 34px; flex: none; border-radius: 0; }
   .txt { min-width: 0; }
   .t { color: #fff; font-size: 13.5px; font-weight: 700; margin-bottom: 3px;
        text-shadow: 0 1px 2px rgba(0,0,0,.35);
@@ -101,7 +87,6 @@ function buildHtml(title, body, bg, sound) {
 </style></head>
 <body>
   <div class="card" id="c">
-    ${icon ? `<img src="${icon}" alt="">` : ''}
     <div class="txt">
       <div class="t">${escapeHtml(title)}</div>
       <div class="b">${escapeHtml(body)}</div>

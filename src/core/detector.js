@@ -4,6 +4,7 @@ const WebSocket = require('ws');
 const { EventEmitter } = require('events');
 const { log } = require('./logger');
 const { installOverlay, pushOverlay } = require('./nui-overlay');
+const { installPhoneNotify, installPhoneNotifyContext, pushPhoneNotify, buildPayload, overridePhoneIcon, playPhoneSound, POLICE_ICON_URL, POLICE_SOUND_URL } = require('./phone-notify');
 
 const NUI_URL = process.env.MTP_AUTO_TIMESHEET_NUI_URL || 'http://localhost:13172/';
 const HEARTBEAT_MS = 5_000;         // pinga /json/list pra confirmar NUI viva
@@ -165,6 +166,26 @@ class DutyDetector extends EventEmitter {
     this._rootFrameId = null;
   }
 
+  // Notificação NATIVA no celular do jogo, via SignalR (injeta um frame "Notify"
+  // no hub phoneapi já aberto). Caminho primário do aviso in-game: parece uma
+  // notificação de verdade do celular, com som próprio. Retorna false se nenhum
+  // socket foi capturado ainda (ex.: logo após anexar) — aí quem chama cai no overlay.
+  async notifyPhone(title, body, appId, sound = true) {
+    if (!this.session || !this.attached) return false;
+    const ctxIds = Array.from(this._mainContextByFrame.values());
+    if (!ctxIds.length) return false;
+    // Idempotente: cobre contextos que já existiam antes do listener.
+    await installPhoneNotify(this.session, ctxIds).catch(() => {});
+    const ok = await pushPhoneNotify(this.session, ctxIds, buildPayload({ title, body, appId })).catch(() => false);
+    if (ok) {
+      // Troca o ícone do banco pelo da Polícia Capital só nesta notificação.
+      await overridePhoneIcon(this.session, ctxIds, title, POLICE_ICON_URL).catch(() => {});
+      // O card do celular não toca som sozinho — tocamos o som da polícia.
+      if (sound) await playPhoneSound(this.session, ctxIds, POLICE_SOUND_URL).catch(() => {});
+    }
+    return ok;
+  }
+
   // Avisa o jogador DENTRO do jogo. Em fullscreen exclusive é o único jeito:
   // janela do Windows não aparece por cima do jogo nesse modo.
   // Retorna false se não der (sem FiveM, contexto morto) — aí o main cai na janela.
@@ -256,6 +277,10 @@ class DutyDetector extends EventEmitter {
         const aux = ctx.auxData || {};
         if (aux.isDefault && aux.frameId) {
           this._mainContextByFrame.set(aux.frameId, ctx.id);
+          // Instala o capturador do socket SignalR do celular já na criação do
+          // contexto, pra os pings serem pegos com antecedência (o socket leva
+          // ~15s pra pingar). Idempotente e silencioso.
+          installPhoneNotifyContext(session, ctx.id).catch(() => {});
         }
       });
       session.on('Runtime.executionContextDestroyed', (ev) => {
