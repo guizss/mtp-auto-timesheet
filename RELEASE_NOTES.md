@@ -1,5 +1,18 @@
 **Desenvolvido por @guip1_**
 
+## 🚨 Atualização urgente (1.0.7)
+
+Correção de segurança. Em servidores de FiveM que **não são a Metrópole**, o programa
+podia ser detectado como interferência na interface do jogo e gerar **ban**.
+
+A partir desta versão ele só entra em ação quando reconhece a Metrópole. Em qualquer outro
+servidor fica **inerte** — não injeta nem altera nada na interface do jogo.
+
+**Atualize o quanto antes.** Quem já tem o programa instalado recebe sozinho, sem precisar
+baixar de novo — basta reiniciar pelo menu da bandeja quando o aviso aparecer.
+
+---
+
 ## 📥 Como instalar
 
 **Baixe o arquivo `mtp-auto-timesheet-setup-x.y.z.exe`** na lista de Assets aqui embaixo.

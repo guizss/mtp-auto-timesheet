@@ -88,7 +88,33 @@ async function testeRetryFechamento() {
   check('ponto fechado', !ctl.pontoOpen);
 }
 
+// -------- Portão: fora da Metrópole, o detector não toca em nada --------
+
+async function testeServidorEstranho() {
+  console.log('\n== Servidor que não é a Metrópole (portão anti-ban) ==');
+  const fake = await startMockFiveM(PORT, { metropole: false });
+  const detector = new DutyDetector();
+  const cliques = [];
+  const ctl = wireDetector(detector, async (b) => { cliques.push(b); });
+  detector.start();
+
+  await sleep(6_000); // tempo de sobra pra ao menos uma tentativa de attach
+  check('não anexou em servidor estranho', !detector.attached);
+  check('reconheceu como servidor estranho', detector._onForeignServer === true);
+
+  const m = fake.methodsSeen();
+  check('leu a árvore de frames (leitura passiva)', m.includes('Page.getFrameTree'));
+  const injetou = m.some((x) => /addBinding|createIsolatedWorld|Runtime\.enable|Network\.enable|Runtime\.evaluate/.test(x));
+  check('NÃO injetou nada (sem addBinding/evaluate/enable)', !injetou);
+  check('nenhum clique no Discord', cliques.length === 0);
+
+  detector.stop();
+  await sleep(500);
+  await fake.stop();
+}
+
 (async () => {
+  await testeServidorEstranho();
   await testeCiclo();
   await testeRetryFechamento();
   console.log(falhas === 0 ? '\nTudo passou.' : `\n${falhas} verificação(ões) falharam.`);

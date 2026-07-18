@@ -12,6 +12,7 @@ const NO_CONN_CONFIRM_TICKS = 3;    // 3 heartbeats falhados (~15s) = desconecto
 const REATTACH_DELAY_MS = 2_000;
 const POLL_INTERVAL_MS = 5_000;     // poll da API character/data
 const WAIT_FIVEM_POLL_MS = 3_000;   // intervalo de sondagem enquanto o FiveM não abre
+const FOREIGN_RECHECK_MS = 10_000;  // servidor não-Metrópole: re-checa devagar, sem injetar
 const WAIT_LOG_EVERY = 20;          // loga "aguardando" a cada N sondagens (~1min)
 const CLOSE_RETRY_ATTEMPTS = 5;     // tentativas de fechar o ponto quando o FiveM cai
 const CLOSE_RETRY_DELAY_MS = 10_000;
@@ -158,6 +159,8 @@ class DutyDetector extends EventEmitter {
     this._probeFailures = 0;
     this._connectedOnce = false;      // já anexou alguma vez? (separa espera de queda)
     this._disconnectAnnounced = false;// 'no-connection' é edge-triggered, 1x por queda
+    this._onForeignServer = false;    // último attach barrado por não ser a Metrópole
+    this._foreignAnnounced = false;   // loga o "servidor estranho" 1x por episódio
     this._heartbeatTimer = null;
     this._pollTimer = null;
     this._polling = false;
@@ -227,8 +230,15 @@ class DutyDetector extends EventEmitter {
     while (!this.stopped) {
       const ok = await this._tryAttach();
       if (!ok) {
-        this._onProbeFail();
-        await sleep(this._connectedOnce ? REATTACH_DELAY_MS : WAIT_FIVEM_POLL_MS);
+        if (this._onForeignServer) {
+          // Servidor estranho: FiveM está no ar, só não é a Metrópole. Não conta
+          // como ausência de jogo nem como queda — só re-checa devagar, caso o
+          // jogador entre na Metrópole sem reiniciar o app.
+          await sleep(FOREIGN_RECHECK_MS);
+        } else {
+          this._onProbeFail();
+          await sleep(this._connectedOnce ? REATTACH_DELAY_MS : WAIT_FIVEM_POLL_MS);
+        }
         continue;
       }
       this._startHeartbeat();
@@ -266,9 +276,28 @@ class DutyDetector extends EventEmitter {
     const root = targets.find((t) => t.title === 'CitizenFX root UI');
     if (!root) return false;
 
+    // Cada tentativa começa assumindo que NÃO é servidor estranho; o portão
+    // abaixo decide. Assim uma falha de conexão comum não herda o estado anterior.
+    this._onForeignServer = false;
+
     const session = new CdpSession(root.webSocketDebuggerUrl);
     try {
       await session.connect();
+
+      // PORTÃO: só age na Metrópole. Ler a DOM e injetar script em outro servidor
+      // tem assinatura de tampering e leva a ban. getFrameTree é leitura passiva
+      // (não habilita domínio, não injeta) — seguro rodar em qualquer servidor.
+      // Fora da Metrópole, encerra aqui, ANTES de qualquer addBinding/evaluate.
+      if (!(await this._confirmMetropole(session))) {
+        if (!this._foreignAnnounced) {
+          log('Servidor não é a Metrópole (nenhum resource metro-* na NUI). Detector inerte — nada será lido ou injetado.');
+          this._foreignAnnounced = true;
+        }
+        this._onForeignServer = true;
+        session.close();
+        return false;
+      }
+      this._foreignAnnounced = false;
 
       // Registra listeners ANTES de habilitar domínios (senão perdemos os eventos iniciais)
       this._mainContextByFrame = new Map();
@@ -438,6 +467,20 @@ class DutyDetector extends EventEmitter {
       } catch {}
     }
     return null;
+  }
+
+  // É a Metrópole? Assinatura: algum frame da NUI é um resource metro-* — a tela
+  // de loading (nui://metro-loading) no início, o celular/inventário (metro-cellphone,
+  // metro-inventory) durante o jogo. Só leitura da árvore de frames, nada injetado.
+  async _confirmMetropole(session) {
+    try {
+      const { frameTree } = await session.send('Page.getFrameTree');
+      return flattenFrames(frameTree).some(
+        (f) => /metro-/i.test(f.url || '') || /metro-/i.test(f.name || '')
+      );
+    } catch {
+      return false; // na dúvida, não age
+    }
   }
 
   async _tryInjectObserver(session) {

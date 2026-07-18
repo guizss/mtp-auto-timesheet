@@ -5,9 +5,19 @@ const { WebSocketServer } = require('ws');
 
 const BINDING_NAME = 'mtpAutoTimesheetOnStatus';
 
-function startMockFiveM(port) {
+// opts.metropole (default true): quando false, a NUI não tem nenhum resource
+// metro-*, simulando OUTRO servidor — o detector deve ficar inerte nesse caso.
+function startMockFiveM(port, opts = {}) {
+  const isMetropole = opts.metropole !== false;
   const clients = new Set();
+  const methods = [];       // todo method CDP recebido, pra o teste auditar injeção
   const wss = new WebSocketServer({ noServer: true });
+
+  // Metrópole expõe um frame metro-* (aqui, o celular); servidor estranho, nenhum.
+  const childFrames = isMetropole
+    ? [{ frame: { id: '2', url: 'https://cfx-nui-metro-cellphone/html/index.html', name: 'metro-cellphone' }, childFrames: [] }]
+    : [];
+  const frameTree = { frame: { id: '1', url: 'nui://root', name: 'root' }, childFrames };
 
   wss.on('connection', (ws) => {
     clients.add(ws);
@@ -15,10 +25,9 @@ function startMockFiveM(port) {
     ws.on('message', (data) => {
       let msg;
       try { msg = JSON.parse(data.toString()); } catch { return; }
+      if (msg.method) methods.push(msg.method);
       let result = {};
-      if (msg.method === 'Page.getFrameTree') {
-        result = { frameTree: { frame: { id: '1', url: 'nui://root', name: 'root' }, childFrames: [] } };
-      }
+      if (msg.method === 'Page.getFrameTree') result = { frameTree };
       ws.send(JSON.stringify({ id: msg.id, result }));
     });
   });
@@ -41,6 +50,9 @@ function startMockFiveM(port) {
   });
 
   return new Promise((resolve) => server.listen(port, () => resolve({
+    // Métodos CDP recebidos. O teste do servidor estranho confere que só houve
+    // leitura (Page.getFrameTree) e nenhuma injeção (addBinding/evaluate/enable).
+    methodsSeen: () => methods.slice(),
     // Simula o observer do metro-inventory reportando o texto do span.
     reportarStatus: (text) => {
       for (const ws of clients) {
