@@ -8,7 +8,8 @@
   "main": "src/main.js",
   "scripts": {
     "start": "npm run icons && electron .",
-    "test": "node test/reconexao.js",
+    "test": "node test/reconexao.js && node test/killswitch.js",
+    "test:kill": "node test/killswitch.js",
     "test:notif": "electron test/notificacoes.js",
     "icons": "node tools/make-icons.js && node tools/make-sound.js",
     "sound": "node tools/make-sound.js",

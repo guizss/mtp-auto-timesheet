@@ -1,79 +1,20 @@
 **Desenvolvido por @guip1_**
 
-## 🚨 Atualização urgente (1.0.7)
+## Programa descontinuado
 
-Correção de segurança. Em servidores de FiveM que **não são a Metrópole**, o programa
-podia ser detectado como interferência na interface do jogo e gerar **ban**.
+Para evitar problemas com o FiveM, o **mtp-auto-timesheet foi descontinuado** e não bate
+mais o ponto automaticamente.
 
-A partir desta versão ele só entra em ação quando reconhece a Metrópole. Em qualquer outro
-servidor fica **inerte** — não injeta nem altera nada na interface do jogo.
+Quem já tem o programa instalado recebe esta versão sozinho. Ao abrir, ele mostra um aviso
+e **para de funcionar** — não faz mais nada dentro do jogo.
 
-**Atualize o quanto antes.** Quem já tem o programa instalado recebe sozinho, sem precisar
-baixar de novo — basta reiniciar pelo menu da bandeja quando o aviso aparecer.
+### Como desinstalar
 
----
+1. Abra **Configurações do Windows → Aplicativos → Aplicativos e recursos**.
+2. Procure por **mtp-auto-timesheet**.
+3. Clique nele e em **Desinstalar**.
 
-## 📥 Como instalar
+O próprio aviso do programa tem um botão **"Desinstalar agora"** que abre essa tela para
+você.
 
-**Baixe o arquivo `mtp-auto-timesheet-setup-x.y.z.exe`** na lista de Assets aqui embaixo.
-É o único que você precisa — ignore o resto.
-
-> Os arquivos `latest.yml`, `.blockmap` e "Source code" são usados pelo programa e por
-> quem desenvolve. Não servem para instalar.
-
-### O Windows vai reclamar — isso é esperado
-
-Ao abrir, aparece **"O Windows protegeu o seu PC"**. Isso acontece porque o programa não
-tem assinatura digital (um certificado custa caro e é cobrado por ano).
-
-Clique em **Mais informações** → **Executar assim mesmo**.
-
-### Primeira execução
-
-1. Uma janela do Discord vai abrir. **Faça login normalmente.**
-2. Não precisa apertar nada: o programa detecta o login sozinho e nunca mais pede.
-3. Pronto. Ele fica no ícone perto do relógio (bandeja).
-
-### Usando
-
-**Não precisa fazer nada.** Abra o FiveM e jogue. Entrou em serviço, o ponto abre. Saiu,
-o ponto fecha. Fechou o jogo, o ponto fecha.
-
-Um aviso aparece no **celular do jogo**, como uma notificação da Polícia Capital com som,
-avisando quando o ponto abre e quando fecha. Se algo falhar, aparece um aviso de falha —
-esse é o único que exige ação sua: significa que o ponto pode ter ficado aberto.
-
-| Cor do ícone na bandeja | Significado |
-|---|---|
-| 🔘 Cinza | Aguardando o FiveM abrir |
-| 🟠 Laranja | Conectado, fora de serviço |
-| 🟢 Verde | Em serviço — ponto aberto |
-| ⚫ Escuro | Pausado, ou Discord não conectado |
-
-Clique com o **botão direito no ícone** para ver o status, pausar, desligar o som ou sair.
-
-> 🚨 **Use sempre o "Sair" do menu.** Ele fecha o ponto antes de encerrar. Se você matar o
-> programa pelo Gerenciador de Tarefas com o ponto aberto, ele **fica aberto** contando
-> hora sem você em serviço.
-
-### Atualizações
-
-O programa se atualiza sozinho — você não precisa voltar aqui. Cada atualização baixa
-menos de 1 MB, não o instalador inteiro.
-
-### Se algo der errado
-
-Bandeja → **Ver logs**. O histórico completo do que aconteceu está lá.
-
----
-
-## ⚠️ Antes de instalar, saiba do risco
-
-Este programa **automatiza a sua conta de usuário do Discord**. O Discord chama isso de
-*self-bot* e proíbe nos Termos de Serviço — a punição típica é **encerramento da conta**.
-
-O risco é seu. Instale sabendo disso.
-
----
-
-Desenvolvido por **@guip1_** · [github.com/guizss/mtp-auto-timesheet](https://github.com/guizss/mtp-auto-timesheet)
+Obrigado por ter usado.

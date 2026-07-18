@@ -7,12 +7,20 @@ const fs = require('fs');
 const { log, setLogFile } = require('./core/logger');
 const { DutyDetector, wireDetector, NUI_URL } = require('./core/detector');
 const { DiscordClient } = require('./discord');
-const { configureNotifier, attachNotifications } = require('./notifier');
+const { configureNotifier, attachNotifications, notify } = require('./notifier');
 const { closeAllToasts } = require('./toast');
 const { setupUpdater, updateReady, installNow, checkNow } = require('./updater');
+const { setupKillSwitch } = require('./killswitch');
 
 const ASSETS = path.join(__dirname, '..', 'assets');
 const AUTOR = '@guip1_';
+
+// 1.0.8: programa DESCONTINUADO. Não automatiza mais nada — não conecta no FiveM,
+// não loga no Discord, não injeta nada. Só avisa e sugere desinstalar. Isso protege
+// o usuário: um programa "descontinuado" que continuasse batendo ponto ainda daria
+// problema. Para reviver no futuro, basta voltar para false — todo o maquinário
+// (monitor, kill switch) volta a ser ligado normalmente.
+const DISCONTINUED = true;
 
 let tray = null;
 let detector = null;
@@ -22,6 +30,8 @@ let paused = false;
 let loggedIn = false;
 let quitting = false;
 let logFile = null;
+let killed = false;        // desativado remotamente pelo kill switch
+let killMessage = '';
 
 // O Windows agrupa toasts pelo AppUserModelID. Sem isso, em vez do nome do app
 // a notificação sai como "electron.app.Electron".
@@ -77,6 +87,8 @@ function soundEnabled() {
 // -------- Bandeja --------
 
 function trayState() {
+  if (DISCONTINUED) return { icon: 'paused', label: 'Descontinuado — recomendado desinstalar' };
+  if (killed) return { icon: 'paused', label: killMessage ? `Desativado — ${killMessage}` : 'Desativado pelo desenvolvedor' };
   if (!loggedIn) return { icon: 'paused', label: 'Não conectado ao Discord' };
   if (paused) return { icon: 'paused', label: 'Pausado' };
   if (ctl && ctl.pontoOpen) return { icon: 'onduty', label: 'Em serviço — ponto aberto' };
@@ -95,6 +107,20 @@ function updateTray() {
   const { icon, label } = trayState();
   tray.setImage(iconFor(icon));
   tray.setToolTip(`mtp-auto-timesheet — ${label}`);
+
+  // Descontinuado: menu enxuto, sem itens operacionais (não há o que operar).
+  if (DISCONTINUED) {
+    tray.setContextMenu(Menu.buildFromTemplate([
+      { label: 'Programa descontinuado', enabled: false },
+      { label: `Versão ${app.getVersion()} — por ${AUTOR}`, enabled: false },
+      { type: 'separator' },
+      { label: 'Desinstalar...', click: () => openUninstall() },
+      { label: 'Ver logs', click: () => { if (logFile) shell.openPath(logFile); } },
+      { label: 'Sair', click: () => doQuit() },
+    ]));
+    return;
+  }
+
   const pronta = updateReady();
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: `Status: ${label}`, enabled: false },
@@ -143,6 +169,8 @@ function updateTray() {
 
 function startMonitor() {
   if (detector) return;
+  if (DISCONTINUED) { log('Monitor não inicia: programa descontinuado.'); return; }
+  if (killed) { log('Monitor não inicia: programa desativado remotamente.'); return; }
   detector = new DutyDetector();
   ctl = wireDetector(detector, (text) => discord.click(text));
   detector.on('attached', updateTray);
@@ -163,6 +191,35 @@ async function stopMonitor(reason) {
   ctl = null;
 }
 
+// Kill switch remoto: o dev desativou o programa. Fecha o ponto (via stopMonitor)
+// e fica inerte, sem o usuário precisar atualizar nem fazer nada. Idempotente.
+async function applyKill(message) {
+  if (killed) return;
+  killed = true;
+  killMessage = message || '';
+  log(`Desativado remotamente pelo kill switch.${killMessage ? ` Motivo: ${killMessage}` : ''}`);
+  updateTray();
+  // Avisa ANTES de parar o monitor: o aviso in-game depende do detector vivo.
+  try {
+    await notify('Programa desativado',
+      killMessage || 'O desenvolvedor desativou o programa temporariamente. O ponto foi fechado.',
+      'warning');
+  } catch { /* aviso é best-effort */ }
+  try { await stopMonitor('desativado pelo desenvolvedor'); } catch (err) { log(`Erro ao desativar: ${err.message}`); }
+  updateTray();
+}
+
+// Kill switch liberado: volta ao normal se o usuário estiver logado e sem pausa.
+async function applyRestore() {
+  if (!killed) return;
+  killed = false;
+  killMessage = '';
+  log('Reativado remotamente pelo kill switch.');
+  updateTray();
+  if (loggedIn && !paused) startMonitor();
+  updateTray();
+}
+
 async function togglePause(next) {
   paused = next;
   updateTray();
@@ -179,7 +236,7 @@ async function togglePause(next) {
 async function doLogin() {
   loggedIn = await discord.ensureLogin();
   updateTray();
-  if (loggedIn && !paused) startMonitor();
+  if (loggedIn && !paused && !killed) startMonitor();
   return loggedIn;
 }
 
@@ -193,13 +250,61 @@ async function doQuit() {
   app.exit(0);
 }
 
+// -------- Descontinuação (1.0.8) --------
+
+// Abre "Aplicativos e recursos" do Windows, onde o usuário desinstala o programa.
+async function openUninstall() {
+  try {
+    await shell.openExternal('ms-settings:appsfeatures');
+  } catch (err) {
+    log(`Não consegui abrir a tela de desinstalação: ${err.message}`);
+  }
+}
+
+// Aviso de descontinuação. Mostrado a cada abertura enquanto o programa existir na
+// máquina — o objetivo é que a pessoa desinstale. Sem falar em ban: só "problemas
+// com o FiveM", conforme pedido.
+async function showDiscontinuedNotice() {
+  try {
+    const { response } = await dialog.showMessageBox({
+      type: 'warning',
+      title: 'mtp-auto-timesheet — Descontinuado',
+      message: 'Este programa foi descontinuado.',
+      detail: 'Para evitar problemas com o FiveM, o mtp-auto-timesheet não bate mais o ponto '
+        + 'automaticamente e deixou de funcionar.\n\n'
+        + 'Recomendamos desinstalá-lo. Você pode fazer isso agora em "Aplicativos e recursos" '
+        + 'do Windows, procurando por "mtp-auto-timesheet".\n\n'
+        + 'Obrigado por ter usado.',
+      buttons: ['Desinstalar agora', 'Fechar'],
+      defaultId: 0,
+      cancelId: 1,
+      noLink: true,
+    });
+    if (response === 0) await openUninstall();
+  } catch (err) {
+    log(`Falha ao exibir o aviso de descontinuação: ${err.message}`);
+  }
+}
+
 // -------- Boot --------
 
 app.whenReady().then(async () => {
   logFile = setLogFile(path.join(app.getPath('userData'), 'logs', 'mtp-auto-timesheet.log'));
   log(`mtp-auto-timesheet ${app.getVersion()} — desenvolvido por ${AUTOR}`);
-  log(`Iniciando. FiveM esperado em ${NUI_URL}`);
   log(`Logs em ${logFile}`);
+
+  // DESCONTINUADO: não sobe monitor, não loga no Discord, não toca no jogo.
+  // Mantém só o updater vivo (canal para uma futura correção/retomada) e avisa.
+  if (DISCONTINUED) {
+    log('Programa DESCONTINUADO. Nenhuma automação será executada.');
+    tray = new Tray(iconFor('paused'));
+    updateTray();
+    setupUpdater({ onChange: updateTray, beforeInstall: async () => {} });
+    await showDiscontinuedNotice();
+    return;
+  }
+
+  log(`Iniciando. FiveM esperado em ${NUI_URL}`);
 
   tray = new Tray(iconFor('waiting'));
   updateTray();
@@ -223,6 +328,14 @@ app.whenReady().then(async () => {
   setupUpdater({
     onChange: updateTray,
     beforeInstall: () => stopMonitor('atualizando o programa'),
+  });
+
+  // Freio de emergência remoto: o dev pode desativar todos os clientes já
+  // instalados sem que ninguém precise atualizar. Fecha o ponto antes de parar.
+  setupKillSwitch({
+    version: app.getVersion(),
+    onKill: (msg) => applyKill(msg),
+    onRestore: () => applyRestore(),
   });
 
   // Primeira execução: liga o autostart por padrão, mas só uma vez —

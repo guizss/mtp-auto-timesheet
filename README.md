@@ -2,6 +2,11 @@
 
 **Desenvolvido por [@guip1_](https://discord.com/users/guip1_)**
 
+> ## ⚠️ Descontinuado
+> Para evitar problemas com o FiveM, este programa foi **descontinuado** (a partir da
+> v1.0.8) e não bate mais o ponto. Se você tem ele instalado, **desinstale** em
+> Configurações do Windows → Aplicativos. O texto abaixo é histórico.
+
 Programa que **abre e fecha o ponto no Discord sozinho**, conforme você entra e sai de
 serviço na Polícia Capital do FiveM (Metrópole). Ele fica perto do relógio, invisível, e
 você não precisa fazer nada.
@@ -186,8 +191,10 @@ vezes demora. As duas passam pelo mesmo filtro, então nunca geram clique duplic
 ### Clicar no Discord
 
 Usa o Chromium que já vem embutido no próprio programa para abrir o canal e clicar no
-botão. A sessão fica em `%APPDATA%\mtp-auto-timesheet`, na sua máquina. Nada é enviado
-para servidor nenhum — não existe backend, telemetria ou coleta.
+botão. A sessão fica em `%APPDATA%\mtp-auto-timesheet`, na sua máquina. **Nada seu é
+enviado** — não existe backend, telemetria ou coleta. As duas únicas conexões de saída
+são leituras públicas do GitHub: as releases (para atualizar) e um arquivo de status
+(o freio de emergência, abaixo). Nenhuma delas manda qualquer dado seu.
 
 ### Avisar
 
@@ -211,6 +218,14 @@ Ao abrir e a cada 6h, consulta as releases do GitHub. Baixa só os blocos que mu
 uma atualização típica é **menos de 1 MB**, não os 79 MB do instalador. Instala em
 silêncio (sem SmartScreen) e **fecha o ponto antes de reiniciar**.
 
+### Freio de emergência (kill switch)
+
+Ao abrir e a cada 5 min, o programa lê um pequeno arquivo de status público. Se ele disser
+"desligado", o programa **fecha o ponto e fica inerte** — sem você precisar atualizar nem
+fazer nada. Serve para o desenvolvedor puxar o freio de todos de uma vez, por exemplo numa
+onda de ban. Se o arquivo não puder ser lido (você offline, host fora do ar), **nada muda**:
+o programa nunca se desliga por falha de conexão.
+
 ### Onde ficam as coisas
 
 ```
@@ -228,7 +243,8 @@ C:\Program Files\mtp-auto-timesheet\        o programa
 ```powershell
 npm install
 npm start            # modo dev
-npm test             # regressão do detector (~2min, não toca no seu Discord)
+npm test             # regressão do detector (~2min) + kill switch, sem tocar no Discord
+npm run test:kill    # só a regressão do kill switch (rápida)
 npm run test:notif   # dispara os avisos pra conferir visualmente
 npm run dist         # gera dist/mtp-auto-timesheet-setup-x.y.z.exe (~79 MB)
 ```
@@ -250,6 +266,26 @@ git push --follow-tags
 As releases `v1.0.1` e `v1.0.2` são do nome antigo (`auto-timesheet`) e estão órfãs: não
 se atualizam para o nome novo. Estão marcadas como obsoletas. O `mtp-auto-timesheet`
 começa na `v1.0.3`.
+
+### Puxar o freio de emergência (kill switch)
+
+Para **desativar todos os clientes** já instalados, sem que ninguém precise atualizar,
+edite `killswitch.json` na raiz do repo e dê push no `master`:
+
+```json
+{ "enabled": false, "minVersion": "0.0.0", "message": "Motivo mostrado ao usuário" }
+```
+
+Cada cliente lê esse arquivo ao abrir e a cada 5 min (via `raw.githubusercontent.com`).
+Com `enabled: false`, ele fecha o ponto e fica inerte; volte para `true` e ele reativa
+sozinho. `minVersion` desliga só quem estiver **abaixo** daquela versão (útil para forçar
+quem ficou para trás). Propagação: até ~5 min do cache do raw + o intervalo de checagem.
+
+⚠️ Só funciona em clientes que **já tenham** essa versão (≥ 1.0.8). Versões anteriores não
+têm o freio e ficam fora do alcance — por isso ele precisa estar na rua **antes** de você
+precisar dele. E se um dia o repo virar **privado**, a URL crua para de responder: aí o
+`killswitch.json` teria que migrar para um gist público, Cloudflare Pages ou R2 (a URL
+está em `src/killswitch.js`).
 
 ### 🚨 Nunca empacote a sua sessão do Discord
 
@@ -292,6 +328,7 @@ Alternativa: ativar o **Modo Desenvolvedor** do Windows.
 | `src/notifier.js` | Decide entre o overlay do jogo e a janela; dedup de 60s |
 | `src/toast.js` | Janela de aviso (fallback com o FiveM fechado) |
 | `src/updater.js` | Auto-update — fecha o ponto antes de reiniciar |
+| `src/killswitch.js` | Freio remoto — lê um flag público; fail-open. Sem Electron, testável puro |
 | `src/main.js` | Bandeja, menu, autostart, ciclo de vida |
 | `tools/make-icons.js` | Gera os ícones por código (PNG/ICO na mão, via zlib) |
 | `tools/make-sound.js` | Gera o som por código (WAV na mão) |
